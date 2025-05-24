@@ -4,6 +4,7 @@ const App = () => {
   const [people, setPeople] = useState([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [timeOfDay, setTimeOfDay] = useState("");
 
   // Load from localStorage
   useEffect(() => {
@@ -19,10 +20,11 @@ const App = () => {
   }, [people]);
 
   const handleAddPerson = () => {
-    if (!name || !email) return;
-    setPeople([...people, { name, email, checked: false }]);
+    if (!name || !email ||!timeOfDay) return;
+    setPeople([...people, { name, email, timeOfDay, checked: false }]);
     setName("");
     setEmail("");
+    setTimeOfDay("");
   };
 
   const handleCheckToggle = (index) => {
@@ -32,9 +34,9 @@ const App = () => {
   };
 
   const exportToCSV = () => {
-    const csvRows = ["Naam,Email,Aanwezig"];
-    people.forEach(({ name, email, checked }) => {
-      csvRows.push(`${name},${email},${checked}`);
+    const csvRows = ["Naam,Email,Dagdeel,Aanwezig"];
+    people.forEach(({ name, email, timeOfDay, checked }) => {
+      csvRows.push(`${name},${email},${timeOfDay},${checked}`);
     });
     const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -55,8 +57,8 @@ const App = () => {
       const text = event.target.result;
       const lines = text.trim().split("\n").slice(1); // Skip header
       const importedPeople = lines.map(line => {
-        const [name, email, checked] = line.split(";");
-        return { name, email, checked: checked === "true" };
+        const [name, email,  timeOfDay, checked ] = line.split(";");
+        return { name, email,timeOfDay, checked: checked === "true" };
       });
       setPeople(importedPeople);
     };
@@ -64,7 +66,7 @@ const App = () => {
   };
 
   return (
-    <div className="p-6 max-w-xl mx-auto space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="space-y-4">
         <div className="flex gap-2">
           <input
@@ -79,6 +81,18 @@ const App = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <select
+            value={timeOfDay}
+            onChange={(e) => setTimeOfDay(e.target.value)}
+            className="border border-gray-300 rounded px-2 py-1"
+          >
+            <option value="" disabled>
+              Kies een dagdeel
+            </option>
+            <option value="Ochtend">Ochtend</option>
+            <option value="Middag">Middag</option>
+            <option value="Hele dag">Hele dag</option>
+          </select>
           <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleAddPerson}>
             Voeg toe
           </button>
@@ -92,6 +106,7 @@ const App = () => {
               <div>
                 <p className="font-semibold">{person.name}</p>
                 <p className="text-sm text-gray-600">{person.email}</p>
+                <p className="text-sm text-gray-600">{person.timeOfDay}</p>
               </div>
               <input
                 type="checkbox"
