@@ -1,42 +1,35 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
+const defaultEventData = { name: "", eventDate: "" };
+const defaultPersonData = { name: "", email: "", timeOfDay: "" };
+
 const App = () => {
   const [events, setEvents] = useState([]);
-  const [selectedEventId, setSelectedEventId] = useState(null);
-  const [newEventName, setNewEventName] = useState("");
-  const [newEventDate, setNewEventDate] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-
   const [people, setPeople] = useState([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [timeOfDay, setTimeOfDay] = useState("");
+  const [selectedEventId, setSelectedEventId] = useState(null);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [newEvent, setNewEvent] = useState(defaultEventData);
+  const [newPerson, setNewPerson] = useState(defaultPersonData);
+
   const [editingEventId, setEditingEventId] = useState(null);
   const [editingPersonId, setEditingPersonId] = useState(null);
-
-  const [editEventData, setEditEventData] = useState({ name: "", eventDate: "" });
-  const [editPersonData, setEditPersonData] = useState({ name: "", email: "", timeOfDay: "" });
+  const [editPersonData, setEditPersonData] = useState(defaultPersonData);
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
   useEffect(() => {
-    if (selectedEventId !== null) {
-      fetchPeople(selectedEventId);
-    }
+    if (selectedEventId) fetchPeople(selectedEventId);
   }, [selectedEventId]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetchEvents();
-      if (selectedEventId !== null) {
-        fetchPeople(selectedEventId);
-      }
-    }, 30000); // 30 seconds
+      if (selectedEventId) fetchPeople(selectedEventId);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [selectedEventId]);
@@ -45,7 +38,9 @@ const App = () => {
     try {
       const res = await axios.get("/api/events");
       setEvents(res.data);
-      if (res.data.length > 0) setSelectedEventId(res.data[0].id);
+      if (res.data.length > 0 && !selectedEventId) {
+        setSelectedEventId(res.data[0].id);
+      }
     } catch (err) {
       console.error("Failed to fetch events:", err);
     }
@@ -60,36 +55,25 @@ const App = () => {
     }
   };
 
-  const handleCreateEvent = async () => {
-    const trimmedName = newEventName.trim();
-    const trimmedDate = newEventDate.trim();
+  const validateDate = (date) => /^\d{2}-\d{2}-\d{4}$/.test(date);
 
-    if (!trimmedName || !trimmedDate || !/^\d{2}-\d{2}-\d{4}$/.test(trimmedDate)) {
+  const handleCreateEvent = async () => {
+    const { name, eventDate } = newEvent;
+    if (!name.trim() || !validateDate(eventDate.trim())) {
       alert("Kies een juiste naam en datum (dd-mm-yyyy).");
       return;
     }
 
     try {
       const res = await axios.post("/api/events", {
-        name: trimmedName,
-        eventDate: trimmedDate,
+        name: name.trim(),
+        eventDate: eventDate.trim(),
       });
       setEvents((prev) => [...prev, res.data]);
       setSelectedEventId(res.data.id);
-      setNewEventName("");
-      setNewEventDate("");
+      setNewEvent(defaultEventData);
     } catch (err) {
       console.error("Failed to create event:", err);
-    }
-  };
-
-  const handleEditEvent = async (eventId) => {
-    try {
-      await axios.put(`/api/events/${eventId}`, editEventData);
-      setEditingEventId(null);
-      fetchEvents();
-    } catch (err) {
-      console.error("Failed to edit event:", err);
     }
   };
 
@@ -105,27 +89,24 @@ const App = () => {
   };
 
   const handleAddPerson = async () => {
+    const { name, email, timeOfDay } = newPerson;
     if (!name || !email || !timeOfDay || !selectedEventId) return;
     try {
       await axios.post("/api/people", {
-        name,
-        email,
-        timeOfDay,
+        ...newPerson,
         checked: false,
         eventId: selectedEventId,
       });
-      setName("");
-      setEmail("");
-      setTimeOfDay("");
+      setNewPerson(defaultPersonData);
       fetchPeople(selectedEventId);
     } catch (err) {
       console.error("Failed to add person:", err);
     }
   };
 
-  const handleEditPerson = async (personId) => {
+  const handleEditPerson = async (id) => {
     try {
-      await axios.put(`/api/people/${personId}`, {
+      await axios.put(`/api/people/${id}`, {
         ...editPersonData,
         checked: false,
         eventId: selectedEventId,
@@ -137,10 +118,10 @@ const App = () => {
     }
   };
 
-  const handleDeletePerson = async (personId) => {
+  const handleDeletePerson = async (id) => {
     if (!window.confirm("Verwijder deze person?")) return;
     try {
-      await axios.delete(`/api/people/${personId}`);
+      await axios.delete(`/api/people/${id}`);
       fetchPeople(selectedEventId);
     } catch (err) {
       console.error("Failed to delete person:", err);
@@ -170,13 +151,13 @@ const App = () => {
       csvRows.push(`${name},${email},${timeOfDay},${checked}`)
     );
 
-    const dateStr = /^\d{2}-\d{2}-\d{4}$/.test(event.eventDate)
+    const dateStr = validateDate(event.eventDate)
       ? event.eventDate
       : new Date().toLocaleDateString("nl-NL").replace(/\//g, "-");
 
     const filename = `${event.name.replace(/[^a-z0-9]/gi, "_")}_${dateStr}.csv`;
-
     const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -185,14 +166,13 @@ const App = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportCSV = async (e) => {
+  const handleImportCSV = (e) => {
     const file = e.target.files[0];
     if (!file || !selectedEventId) return;
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const text = event.target.result;
-      const lines = text.trim().split("\n").filter(Boolean);
+      const lines = event.target.result.trim().split("\n").filter(Boolean);
       const [, ...rows] = lines;
 
       const people = rows.map((line) => {
@@ -210,26 +190,22 @@ const App = () => {
     reader.readAsText(file);
   };
 
+  const toggleAdmin = () => {
+    if (!isAdmin) {
+      const pwd = prompt("Voer admin wachtwoord in:");
+      if (pwd === "admin") setIsAdmin(true);
+      else alert("Onjuist wachtwoord.");
+    } else {
+      setIsAdmin(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Admin & Event Selector */}
       <div className="flex items-center gap-4 mb-4">
         <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={isAdmin}
-            onChange={() => {
-              if (!isAdmin) {
-                const pwd = prompt("Voer admin wachtwoord in:");
-                if (pwd === "admin") {
-                  setIsAdmin(true);
-                } else {
-                  alert("Onjuist wachtwoord.");
-                }
-              } else {
-                setIsAdmin(false);
-              }
-            }}
-          />
+          <input type="checkbox" checked={isAdmin} onChange={toggleAdmin} />
           Admin modus
         </label>
 
@@ -238,17 +214,11 @@ const App = () => {
           onChange={(e) => setSelectedEventId(Number(e.target.value))}
           className="border border-gray-300 rounded px-2 py-1"
         >
-          {events.map((event) =>
-            editingEventId === event.id ? (
-              <option key={event.id} value={event.id}>
-                ✏️ Bewerken...
-              </option>
-            ) : (
-              <option key={event.id} value={event.id}>
-                {event.name} {event.eventDate ? `(${event.eventDate})` : ""}
-              </option>
-            )
-          )}
+          {events.map((event) => (
+            <option key={event.id} value={event.id}>
+              {editingEventId === event.id ? "✏️ Bewerken..." : `${event.name} (${event.eventDate || ""})`}
+            </option>
+          ))}
         </select>
 
         {isAdmin && (
@@ -256,49 +226,35 @@ const App = () => {
             <input
               type="text"
               placeholder="Nieuwe event naam"
-              value={newEventName}
-              onChange={(e) => setNewEventName(e.target.value)}
+              value={newEvent.name}
+              onChange={(e) => setNewEvent((ev) => ({ ...ev, name: e.target.value }))}
               className="border p-2 rounded w-48"
             />
             <input
               type="text"
               placeholder="Datum (dd-mm-jjjj)"
-              value={newEventDate}
-              onChange={(e) => setNewEventDate(e.target.value)}
+              value={newEvent.eventDate}
+              onChange={(e) => setNewEvent((ev) => ({ ...ev, eventDate: e.target.value }))}
               className="border p-2 rounded w-36"
             />
-            <button
-              onClick={handleCreateEvent}
-              className="bg-green-600 text-white px-4 py-2 rounded"
-            >
+            <button onClick={handleCreateEvent} className="bg-green-600 text-white px-4 py-2 rounded">
               Maak event aan
             </button>
           </>
         )}
-
       </div>
 
-        {isAdmin && (
+      {isAdmin && (
+        <>
           <div className="flex gap-2">
-            <button
-              className="bg-green-600 text-white w-full p-2 rounded"
-              onClick={exportToCSV}
-            >
+            <button className="bg-green-600 text-white w-full p-2 rounded" onClick={exportToCSV}>
               Exporteren naar CSV
             </button>
             <label className="bg-gray-200 p-2 rounded cursor-pointer text-center w-full">
               Importeren uit CSV
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleImportCSV}
-                className="hidden"
-              />
+              <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
             </label>
           </div>
-        )}
-        
-        {isAdmin && (
           <div className="flex">
             <button
               className="bg-purple-600 text-white w-full p-2 rounded"
@@ -307,26 +263,27 @@ const App = () => {
               Verwijder huidig event
             </button>
           </div>
-        )}
+        </>
+      )}
 
-      {/* People list and input */}
+      {/* Add Person */}
       <div className="space-y-4">
         <div className="flex gap-2">
           <input
             className="border p-2 rounded w-full"
             placeholder="Naam"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={newPerson.name}
+            onChange={(e) => setNewPerson((p) => ({ ...p, name: e.target.value }))}
           />
           <input
             className="border p-2 rounded w-full"
             placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={newPerson.email}
+            onChange={(e) => setNewPerson((p) => ({ ...p, email: e.target.value }))}
           />
           <select
-            value={timeOfDay}
-            onChange={(e) => setTimeOfDay(e.target.value)}
+            value={newPerson.timeOfDay}
+            onChange={(e) => setNewPerson((p) => ({ ...p, timeOfDay: e.target.value }))}
             className="border border-gray-300 rounded px-2 py-1"
           >
             <option value="" disabled>Kies een dagdeel</option>
@@ -334,41 +291,30 @@ const App = () => {
             <option value="Middag">Middag</option>
             <option value="Hele dag">Hele dag</option>
           </select>
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded"
-            onClick={handleAddPerson}
-          >
+          <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleAddPerson}>
             Voeg toe
           </button>
         </div>
 
+        {/* People List */}
         <ul className="space-y-2">
           {people.map((person) => (
-            <li
-              key={person.id}
-              className="flex justify-between items-center border p-2 rounded shadow-sm"
-            >
+            <li key={person.id} className="flex justify-between items-center border p-2 rounded shadow-sm">
               {editingPersonId === person.id ? (
                 <div className="flex gap-2 w-full">
                   <input
                     value={editPersonData.name}
-                    onChange={(e) =>
-                      setEditPersonData((p) => ({ ...p, name: e.target.value }))
-                    }
+                    onChange={(e) => setEditPersonData((p) => ({ ...p, name: e.target.value }))}
                     className="border p-1 rounded w-full"
                   />
                   <input
                     value={editPersonData.email}
-                    onChange={(e) =>
-                      setEditPersonData((p) => ({ ...p, email: e.target.value }))
-                    }
+                    onChange={(e) => setEditPersonData((p) => ({ ...p, email: e.target.value }))}
                     className="border p-1 rounded w-full"
                   />
                   <select
                     value={editPersonData.timeOfDay}
-                    onChange={(e) =>
-                      setEditPersonData((p) => ({ ...p, timeOfDay: e.target.value }))
-                    }
+                    onChange={(e) => setEditPersonData((p) => ({ ...p, timeOfDay: e.target.value }))}
                     className="border p-1 rounded"
                   >
                     <option value="Ochtend">Ochtend</option>
