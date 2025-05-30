@@ -65,7 +65,7 @@ const App = () => {
     const trimmedDate = newEventDate.trim();
 
     if (!trimmedName || !trimmedDate || !/^\d{2}-\d{2}-\d{4}$/.test(trimmedDate)) {
-      alert("Enter valid name and date (dd-mm-yyyy).");
+      alert("Kies een juiste naam en datum (dd-mm-yyyy).");
       return;
     }
 
@@ -94,7 +94,7 @@ const App = () => {
   };
 
   const handleDeleteEvent = async (eventId) => {
-    if (!window.confirm("Delete this event?")) return;
+    if (!window.confirm("Verwijder dit event?")) return;
     try {
       await axios.delete(`/api/events/${eventId}`);
       fetchEvents();
@@ -138,7 +138,7 @@ const App = () => {
   };
 
   const handleDeletePerson = async (personId) => {
-    if (!window.confirm("Delete this person?")) return;
+    if (!window.confirm("Verwijder deze person?")) return;
     try {
       await axios.delete(`/api/people/${personId}`);
       fetchPeople(selectedEventId);
@@ -308,7 +308,7 @@ const App = () => {
             </button>
           </div>
         )}
-        
+
       {/* People list and input */}
       <div className="space-y-4">
         <div className="flex gap-2">
@@ -379,7 +379,7 @@ const App = () => {
                     onClick={() => handleEditPerson(person.id)}
                     className="bg-green-600 text-white px-2 rounded"
                   >
-                    Save
+                    Opslaan
                   </button>
                 </div>
               ) : (
