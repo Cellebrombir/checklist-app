@@ -29,6 +29,17 @@ const App = () => {
     }
   }, [selectedEventId]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchEvents();
+      if (selectedEventId !== null) {
+        fetchPeople(selectedEventId);
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedEventId]);
+
   const fetchEvents = async () => {
     try {
       const res = await axios.get("/api/events");
@@ -383,6 +394,18 @@ const App = () => {
             />
           </label>
         </div>
+
+        {isAdmin && (
+          <div className="flex">
+            <button
+              className="bg-purple-600 text-white w-full p-2 rounded"
+              onClick={() => handleDeleteEvent(selectedEventId)}
+            >
+              Verwijder huidig event
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   );

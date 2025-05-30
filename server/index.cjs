@@ -177,6 +177,38 @@ app.post("/api/events", (req, res) => {
 
 // PEOPLE routes (filtered by event_id)
 
+// Delete an event and its associated people
+app.delete("/api/events/:id", (req, res) => {
+  const { id } = req.params;
+
+  // Optional: Prevent deleting the default event
+  if (parseInt(id) === 1) {
+    return res.status(400).json({ error: "Default event cannot be deleted" });
+  }
+
+  db.serialize(() => {
+    db.run("DELETE FROM people WHERE event_id = ?", [id], (err) => {
+      if (err) {
+        console.error("Error deleting people for event:", err);
+        return res.status(500).json({ error: "Failed to delete associated people" });
+      }
+
+      db.run("DELETE FROM events WHERE id = ?", [id], function (err) {
+        if (err) {
+          console.error("Error deleting event:", err);
+          return res.status(500).json({ error: "Failed to delete event" });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: "Event not found" });
+        }
+
+        res.json({ deletedId: id });
+      });
+    });
+  });
+});
+
 // Get all people for an event (eventId query param, default to 1)
 app.get("/api/people", (req, res) => {
   const eventId = parseInt(req.query.eventId) || 1;
