@@ -6,6 +6,7 @@ const App = () => {
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [newEventName, setNewEventName] = useState("");
   const [newEventDate, setNewEventDate] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
 
   const [people, setPeople] = useState([]);
   const [name, setName] = useState("");
@@ -216,7 +217,18 @@ const App = () => {
           <input
             type="checkbox"
             checked={isAdmin}
-            onChange={() => setIsAdmin(!isAdmin)}
+            onChange={() => {
+              if (!isAdmin) {
+                const pwd = prompt("Voer admin wachtwoord in:");
+                if (pwd === "admin") {
+                  setIsAdmin(true);
+                } else {
+                  alert("Onjuist wachtwoord.");
+                }
+              } else {
+                setIsAdmin(false);
+              }
+            }}
           />
           Admin modus
         </label>
@@ -239,28 +251,64 @@ const App = () => {
           )}
         </select>
 
-        <input
-          type="text"
-          placeholder="Nieuwe event naam"
-          value={newEventName}
-          onChange={(e) => setNewEventName(e.target.value)}
-          className="border p-2 rounded w-48"
-        />
-        <input
-          type="text"
-          placeholder="Datum (dd-mm-jjjj)"
-          value={newEventDate}
-          onChange={(e) => setNewEventDate(e.target.value)}
-          className="border p-2 rounded w-36"
-        />
-        <button
-          onClick={handleCreateEvent}
-          className="bg-green-600 text-white px-4 py-2 rounded"
-        >
-          Maak event aan
-        </button>
+        {isAdmin && (
+          <>
+            <input
+              type="text"
+              placeholder="Nieuwe event naam"
+              value={newEventName}
+              onChange={(e) => setNewEventName(e.target.value)}
+              className="border p-2 rounded w-48"
+            />
+            <input
+              type="text"
+              placeholder="Datum (dd-mm-jjjj)"
+              value={newEventDate}
+              onChange={(e) => setNewEventDate(e.target.value)}
+              className="border p-2 rounded w-36"
+            />
+            <button
+              onClick={handleCreateEvent}
+              className="bg-green-600 text-white px-4 py-2 rounded"
+            >
+              Maak event aan
+            </button>
+          </>
+        )}
+
       </div>
 
+        {isAdmin && (
+          <div className="flex gap-2">
+            <button
+              className="bg-green-600 text-white w-full p-2 rounded"
+              onClick={exportToCSV}
+            >
+              Exporteren naar CSV
+            </button>
+            <label className="bg-gray-200 p-2 rounded cursor-pointer text-center w-full">
+              Importeren uit CSV
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleImportCSV}
+                className="hidden"
+              />
+            </label>
+          </div>
+        )}
+        
+        {isAdmin && (
+          <div className="flex">
+            <button
+              className="bg-purple-600 text-white w-full p-2 rounded"
+              onClick={() => handleDeleteEvent(selectedEventId)}
+            >
+              Verwijder huidig event
+            </button>
+          </div>
+        )}
+        
       {/* People list and input */}
       <div className="space-y-4">
         <div className="flex gap-2">
@@ -376,36 +424,6 @@ const App = () => {
             </li>
           ))}
         </ul>
-
-        <div className="flex gap-2">
-          <button
-            className="bg-green-600 text-white w-full p-2 rounded"
-            onClick={exportToCSV}
-          >
-            Exporteren naar CSV
-          </button>
-          <label className="bg-gray-200 p-2 rounded cursor-pointer text-center w-full">
-            Importeren uit CSV
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleImportCSV}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        {isAdmin && (
-          <div className="flex">
-            <button
-              className="bg-purple-600 text-white w-full p-2 rounded"
-              onClick={() => handleDeleteEvent(selectedEventId)}
-            >
-              Verwijder huidig event
-            </button>
-          </div>
-        )}
-
       </div>
     </div>
   );
